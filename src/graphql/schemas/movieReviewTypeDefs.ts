@@ -5,7 +5,7 @@ export const movieReviewTypeDefs = gql`
   type Query {
     "user queries"
     getAllMovieReviews: [MovieReview!]!
-    getMovieReviewByMovieId(movieId: String!): MovieReview!
+    getMovieReviewByMovieId(movieId: String!): [MovieReview!]!
   }
 
   "movie review schema type"
@@ -14,7 +14,7 @@ export const movieReviewTypeDefs = gql`
     movieId: String!
     rating: Int!
     reviewText: String
-    userId: String!
+    user: User!
   }
 
   "---all mutations here---"

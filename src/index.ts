@@ -8,6 +8,8 @@ import { mergeResolvers, mergeTypeDefs } from '@graphql-tools/merge';
 import jwt from 'jsonwebtoken';
 import { userResolvers } from './graphql/resolvers/userResolvers';
 import { userTypeDefs } from './graphql/schemas/userTypeDefs';
+import { movieReviewResolvers } from './graphql/resolvers/movieReviewResolver';
+import { movieReviewTypeDefs } from './graphql/schemas/movieReviewTypeDefs';
 
 dotenv.config();
 
@@ -40,8 +42,8 @@ async function startApolloServer() {
   // });
 
   const server = new ApolloServer({
-    typeDefs: mergeTypeDefs([userTypeDefs]),
-    resolvers: mergeResolvers([userResolvers]),
+    typeDefs: mergeTypeDefs([userTypeDefs, movieReviewTypeDefs]),
+    resolvers: mergeResolvers([userResolvers, movieReviewResolvers]),
     context: ({ req }) => {
       const auth = req.headers.authorization || '';
 

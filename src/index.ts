@@ -2,7 +2,6 @@ import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { ApolloServer } from 'apollo-server-express';
-import { expressjwt } from 'express-jwt';
 import mongoose from 'mongoose';
 import { mergeResolvers, mergeTypeDefs } from '@graphql-tools/merge';
 import jwt from 'jsonwebtoken';
@@ -21,26 +20,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// JWT middleware
-// app.use(
-//   expressjwt({
-//     secret: process.env.JWT_SECRET || 'your-secret-key',
-//     algorithms: ['HS256'],
-//     credentialsRequired: false,
-//   })
-// );
+// Health check endpoint
+app.get('/health', (_, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 // Apollo Server setup
 async function startApolloServer() {
-  // const server = new ApolloServer({
-  //   typeDefs,
-  //   resolvers,
-  //   context: ({ req }) => {
-  //     const user = req.auth || null;
-  //     return { user };
-  //   },
-  // });
-
   const server = new ApolloServer({
     typeDefs: mergeTypeDefs([userTypeDefs, movieReviewTypeDefs]),
     resolvers: mergeResolvers([userResolvers, movieReviewResolvers]),
@@ -54,41 +40,46 @@ async function startApolloServer() {
       try {
         const token = auth.split(' ')[1];
         const user = jwt.verify(token, process.env.JWT_SECRET);
-
-        // console.log('User authenticated:', user);
-
-        if (!req.body?.query?.includes('IntrospectionQuery')) {
-          console.log('Request authenticated for user:', user);
-        }
-        return { user: user };
+        return { user };
       } catch (error) {
         console.error('Token verification failed:', error.message);
         return { user: null };
       }
     },
+    introspection: true, // Enable introspection in production
   });
 
   await server.start();
-  server.applyMiddleware({ app });
+  server.applyMiddleware({ app, path: '/graphql' });
 
   // MongoDB connection
-  const MONGODB_URI = process.env.MONGODB_URI || '';
+  const MONGODB_URI = process.env.MONGODB_URI;
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI must be defined');
+  }
+
   try {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB successfully');
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
+    console.error('MongoDB connection error:', error);
+    throw error;
   }
 
-  // Start server
-  app.listen(port, () => {
-    console.log(`Server is running at http://localhost:${port}`);
-    console.log(
-      `GraphQL endpoint: http://localhost:${port}${server.graphqlPath}`
-    );
-  });
+  if (process.env.NODE_ENV !== 'production') {
+    // Only listen on a port in development
+    app.listen(port, () => {
+      console.log(`Server is running at http://localhost:${port}`);
+      console.log(`GraphQL endpoint: http://localhost:${port}/graphql`);
+    });
+  }
+
+  return app;
 }
 
-startApolloServer().catch((error) => {
-  console.error('❌ Server startup error:', error);
+// Handle any top-level errors
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
 });
+
+export default startApolloServer();

@@ -12,6 +12,7 @@ export const userTypeDefs = gql`
     _id: ID
     name: String!
     email: String!
+    token: String!
   }
 
   type Login_Return_User {
@@ -24,7 +25,11 @@ export const userTypeDefs = gql`
   "---all mutations here---"
   type Mutation {
     "register or create user"
-    createUser(name: String!, email: String!, password: String!): User!
+    createUser(
+      name: String!
+      email: String!
+      password: String!
+    ): Login_Return_User!
 
     "returns string bascically the jwt token"
     login(email: String!, password: String!): Login_Return_User!

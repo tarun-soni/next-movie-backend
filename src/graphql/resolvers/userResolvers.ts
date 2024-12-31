@@ -36,8 +36,14 @@ export const userResolvers = {
         email,
         password: hashedPass,
       });
+      const token = generateToken(user);
       await user.save();
-      return user;
+      return {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        token: token,
+      };
     },
 
     // login mutation

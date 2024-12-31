@@ -13,7 +13,6 @@ import { movieReviewTypeDefs } from './graphql/schemas/movieReviewTypeDefs';
 dotenv.config();
 
 const app: Express = express();
-const port = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors());
@@ -25,32 +24,36 @@ app.get('/health', (_, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+let server: ApolloServer | null = null;
+
 // Apollo Server setup
 async function startApolloServer() {
-  const server = new ApolloServer({
-    typeDefs: mergeTypeDefs([userTypeDefs, movieReviewTypeDefs]),
-    resolvers: mergeResolvers([userResolvers, movieReviewResolvers]),
-    context: ({ req }) => {
-      const auth = req.headers.authorization || '';
+  if (!server) {
+    server = new ApolloServer({
+      typeDefs: mergeTypeDefs([userTypeDefs, movieReviewTypeDefs]),
+      resolvers: mergeResolvers([userResolvers, movieReviewResolvers]),
+      context: ({ req }) => {
+        const auth = req.headers.authorization || '';
 
-      if (!auth) {
-        return { user: null };
-      }
+        if (!auth) {
+          return { user: null };
+        }
 
-      try {
-        const token = auth.split(' ')[1];
-        const user = jwt.verify(token, process.env.JWT_SECRET);
-        return { user };
-      } catch (error) {
-        console.error('Token verification failed:', error.message);
-        return { user: null };
-      }
-    },
-    introspection: true, // Enable introspection in production
-  });
+        try {
+          const token = auth.split(' ')[1];
+          const user = jwt.verify(token, process.env.JWT_SECRET);
+          return { user };
+        } catch (error) {
+          console.error('Token verification failed:', error.message);
+          return { user: null };
+        }
+      },
+      introspection: true,
+    });
 
-  await server.start();
-  server.applyMiddleware({ app, path: '/graphql' });
+    await server.start();
+    server.applyMiddleware({ app, path: '/graphql' });
+  }
 
   // MongoDB connection
   const MONGODB_URI = process.env.MONGODB_URI;
@@ -58,20 +61,14 @@ async function startApolloServer() {
     throw new Error('MONGODB_URI must be defined');
   }
 
-  try {
-    await mongoose.connect(MONGODB_URI);
-    console.log('Connected to MongoDB successfully');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw error;
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    // Only listen on a port in development
-    app.listen(port, () => {
-      console.log(`Server is running at http://localhost:${port}`);
-      console.log(`GraphQL endpoint: http://localhost:${port}/graphql`);
-    });
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await mongoose.connect(MONGODB_URI);
+      console.log('Connected to MongoDB successfully');
+    } catch (error) {
+      console.error('MongoDB connection error:', error);
+      throw error;
+    }
   }
 
   return app;
@@ -82,4 +79,19 @@ process.on('unhandledRejection', (error) => {
   console.error('Unhandled Rejection:', error);
 });
 
-export default startApolloServer();
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 4000;
+  startApolloServer().then((app) => {
+    app.listen(port, () => {
+      console.log(`Server is running at http://localhost:${port}`);
+      console.log(`GraphQL endpoint: http://localhost:${port}/graphql`);
+    });
+  });
+}
+
+// For Vercel
+export default async function handler(req, res) {
+  const app = await startApolloServer();
+  return app(req, res);
+}

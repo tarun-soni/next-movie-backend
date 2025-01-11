@@ -13,7 +13,6 @@ import { Resolvers } from '../../types/generated';
 
 export const movieReviewResolvers: Resolvers = {
   Query: {
-    // todo check user return
     getAllMovieReviews: async (
       _,
       __,
@@ -28,13 +27,22 @@ export const movieReviewResolvers: Resolvers = {
         } = context.user;
 
         const movieReviews = await MovieReview.find({ userId: _id });
-        return movieReviews.map((review) => ({
-          _id: review._id.toString(),
-          movieId: review.movieId,
-          rating: review.rating,
-          reviewText: review.reviewText,
-          user: null as any, // Will be populated by the user resolver
-        }));
+
+        if (!movieReviews || movieReviews.length === 0) {
+          return [];
+        }
+
+        const moviesWithUser = await Promise.all(
+          movieReviews.map(async (review) => {
+            const user = await User.findById(review.userId).select('-password');
+            return {
+              ...review,
+              user,
+            };
+          })
+        );
+
+        return moviesWithUser;
       } catch (error) {
         throw new Error(`Error getting all movie reviews: ${error.message}`);
       }
@@ -45,40 +53,19 @@ export const movieReviewResolvers: Resolvers = {
       { movieId },
       context: Context
     ): Promise<MovieReviewReturnType[]> => {
-      // if (!context || !context.user) {
-      //   throw new AuthenticationError(`NO token`);
-      // }
-
-      //   const {
-      //     user: { _id },
-      //   } = context.user;
-
       const movieReviews = await MovieReview.find({ movieId });
 
       if (!movieReviews || movieReviews.length === 0) {
         return [];
       }
 
-      // const users = await User.find({ _id: { $in: movieReviews.map((review) => review.userId) } });
-
       console.log('movieReviews', movieReviews);
 
-      // type MovieReview {
-      //   _id: ID
-      //   movieId: String!
-      //   rating: Int!
-      //   reviewText: String
-      //   user: User!
-      // }
       const moviesWithUser = await Promise.all(
         movieReviews.map(async (review) => {
-          const user = await User.findById(review.userId);
+          const user = await User.findById(review.userId).select('-password');
           return {
-            _id: review._id.toString(),
-            userId: review.userId,
-            movieId: review.movieId,
-            rating: review.rating,
-            reviewText: review.reviewText,
+            ...review,
             user,
           };
         })
@@ -111,7 +98,6 @@ export const movieReviewResolvers: Resolvers = {
 
   Mutation: {
     // parent, args, context
-    // TODO: add the context here for userID
     createMovieReview: async (
       _,
       { movieId, rating, reviewText, userId },

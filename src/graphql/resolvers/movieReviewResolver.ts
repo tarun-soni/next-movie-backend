@@ -13,6 +13,8 @@ import { Resolvers } from '../../types/generated';
 
 export const movieReviewResolvers: Resolvers = {
   Query: {
+    // using this query in graphql studio to quickly access all reviews,
+    // this is not used in the frontend
     getAllMovieReviews: async (
       _,
       __,
@@ -35,10 +37,20 @@ export const movieReviewResolvers: Resolvers = {
         const moviesWithUser = await Promise.all(
           movieReviews.map(async (review) => {
             const user = await User.findById(review.userId).select('-password');
+            if (!user) {
+              throw new Error('User not found');
+            }
             return {
-              ...review,
-              user,
-            };
+              _id: review._id.toString(),
+              movieId: review.movieId,
+              rating: review.rating,
+              reviewText: review.reviewText || '',
+              user: {
+                _id: user._id.toString(),
+                name: user.name,
+                email: user.email,
+              },
+            } as MovieReviewReturnType;
           })
         );
 
@@ -59,15 +71,21 @@ export const movieReviewResolvers: Resolvers = {
         return [];
       }
 
-      console.log('movieReviews', movieReviews);
-
       const moviesWithUser = await Promise.all(
         movieReviews.map(async (review) => {
           const user = await User.findById(review.userId).select('-password');
+
           return {
-            ...review,
-            user,
-          };
+            _id: review._id.toString(),
+            movieId: review.movieId,
+            rating: review.rating,
+            reviewText: review.reviewText || '',
+            user: {
+              _id: user._id.toString(),
+              name: user.name,
+              email: user.email,
+            },
+          } as MovieReviewReturnType;
         })
       );
       console.log('moviesWithUser', moviesWithUser);

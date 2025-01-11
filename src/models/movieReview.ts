@@ -1,13 +1,7 @@
 import mongoose from 'mongoose';
+import { MovieReviewDocument } from '../types/graphql';
 
-interface MovieReview {
-  userId: string;
-  movieId: string;
-  rating: number;
-  reviewText?: string;
-}
-
-const movieReviewSchema: mongoose.Schema<MovieReview> = new mongoose.Schema({
+const movieReviewSchema = new mongoose.Schema<MovieReviewDocument>({
   userId: {
     type: String,
     required: true,
@@ -28,4 +22,7 @@ const movieReviewSchema: mongoose.Schema<MovieReview> = new mongoose.Schema({
   },
 });
 
-export const MovieReview = mongoose.model('MovieReview', movieReviewSchema);
+export const MovieReview = mongoose.model<MovieReviewDocument>(
+  'MovieReview',
+  movieReviewSchema
+);

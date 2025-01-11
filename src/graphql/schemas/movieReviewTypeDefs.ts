@@ -41,6 +41,10 @@ export const movieReviewTypeDefs = gql`
     total_results: Int
   }
 
+  type DeleteReviewResponse {
+    message: String!
+  }
+
   "---all mutations here---"
   type Mutation {
     "create movie review"
@@ -52,6 +56,6 @@ export const movieReviewTypeDefs = gql`
     ): MovieReview!
 
     "delete movie review"
-    deleteMovieReview(reviewId: String!): String!
+    deleteMovieReview(reviewId: String!): DeleteReviewResponse!
   }
 `;

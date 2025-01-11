@@ -9,14 +9,7 @@ export const userTypeDefs = gql`
 
   "user schema type"
   type User {
-    _id: ID
-    name: String!
-    email: String!
-    token: String!
-  }
-
-  type Login_Return_User {
-    _id: ID
+    _id: ID!
     name: String!
     email: String!
     token: String!
@@ -25,13 +18,9 @@ export const userTypeDefs = gql`
   "---all mutations here---"
   type Mutation {
     "register or create user"
-    createUser(
-      name: String!
-      email: String!
-      password: String!
-    ): Login_Return_User!
+    createUser(name: String!, email: String!, password: String!): User!
 
     "returns string bascically the jwt token"
-    login(email: String!, password: String!): Login_Return_User!
+    login(email: String!, password: String!): User!
   }
 `;

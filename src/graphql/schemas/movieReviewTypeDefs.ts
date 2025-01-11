@@ -4,7 +4,7 @@ export const movieReviewTypeDefs = gql`
   "---all querys here---"
   type Query {
     "user queries"
-    getAllMovieReviews: [MovieReview!]!
+    getAllMovieReviews: [MovieReview]!
     getMovieReviewByMovieId(movieId: String!): [MovieReview!]!
     getGraphqlPopularMovies(pageNumber: Int): MovieType!
   }
@@ -52,6 +52,6 @@ export const movieReviewTypeDefs = gql`
     ): MovieReview!
 
     "delete movie review"
-    deleteMovieReview(movieId: String!): MovieReview!
+    deleteMovieReview(reviewId: String!): String!
   }
 `;

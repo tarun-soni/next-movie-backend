@@ -20,12 +20,20 @@ export const movieReviewResolvers = {
       if (!context || !context.user) {
         throw new AuthenticationError(`NO token`);
       }
-      const {
-        user: { _id },
-      } = context.user;
+      try {
+        console.log('context', context);
+        const {
+          user: { _id },
+        } = context.user;
 
-      const movieReviews = await MovieReview.find({ userId: _id });
-      return movieReviews;
+        console.log('_id', _id);
+
+        const movieReviews = await MovieReview.find({ userId: _id });
+        console.log('movieReviews', movieReviews);
+        return movieReviews;
+      } catch (error) {
+        throw new Error(`Error getting all movie reviews: ${error.message}`);
+      }
     },
 
     getMovieReviewByMovieId: async (_, { movieId }) => {
@@ -109,16 +117,30 @@ export const movieReviewResolvers = {
     // login mutation
     // TODO: check for user id
 
-    deleteMovieReview: async (_, { movieId }, context) => {
-      try {
-        const movieReview = await MovieReview.findOne({ movieId });
+    deleteMovieReview: async (_, { reviewId }, context) => {
+      if (!context || !context.user) {
+        throw new AuthenticationError('User not authenticated');
+      }
 
-        if (movieReview) {
-          await MovieReview.deleteOne({ movieId });
-          return { message: 'Movie review deleted successfully' };
-        } else {
+      const {
+        user: { _id },
+      } = context.user;
+
+      try {
+        const movieReview = await MovieReview.findOne({ _id: reviewId });
+
+        if (!movieReview) {
           throw new Error('Movie review not found');
         }
+
+        if (movieReview.userId !== _id) {
+          throw new Error(
+            'You do not have permission to delete this movie review'
+          );
+        }
+
+        await MovieReview.deleteOne({ _id: reviewId });
+        return 'Movie review deleted successfully';
       } catch (error) {
         throw new Error(`Error deleting movie review: ${error.message}`);
       }

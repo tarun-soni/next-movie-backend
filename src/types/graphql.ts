@@ -10,6 +10,8 @@ export interface Context {
       token: string;
     };
   } | null;
+  res: Response;
+  req: Request;
 }
 
 // Database Document types

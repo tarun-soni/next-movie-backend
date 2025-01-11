@@ -14,8 +14,18 @@ dotenv.config();
 
 const app: Express = express();
 
-// Middleware
-app.use(cors());
+// CORS configuration
+const corsOptions = {
+  origin:
+    process.env.NODE_ENV === 'production'
+      ? 'https://movie-frontend-tarun.vercel.app'
+      : 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,27 +42,29 @@ async function startApolloServer() {
     server = new ApolloServer({
       typeDefs: mergeTypeDefs([userTypeDefs, movieReviewTypeDefs]),
       resolvers: mergeResolvers([userResolvers, movieReviewResolvers]),
-      context: ({ req }) => {
+      context: ({ req, res }) => {
         const auth = req.headers.authorization || '';
-
         if (!auth) {
-          return { user: null };
+          return { user: null, res };
         }
-
         try {
           const token = auth.split(' ')[1];
           const user = jwt.verify(token, process.env.JWT_SECRET);
-          return { user };
+          return { user, res };
         } catch (error) {
           console.error('Token verification failed:', error.message);
-          return { user: null };
+          return { user: null, res };
         }
       },
       introspection: true,
     });
 
     await server.start();
-    server.applyMiddleware({ app, path: '/graphql' });
+    server.applyMiddleware({
+      app,
+      path: '/graphql',
+      cors: false, // THIS Let Express handle CORS
+    });
   }
 
   // MongoDB connection

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import generateToken from '../../utils/generateToken';
 import { AuthenticationError } from 'apollo-server-errors';
 import { Context } from '../../types/graphql';
+import { Response } from 'express';
 import {
   Resolvers,
   MutationCreateUserArgs,
@@ -38,7 +39,7 @@ export const userResolvers: Resolvers = {
   },
 
   Mutation: {
-    createUser: async (_, args: MutationCreateUserArgs) => {
+    createUser: async (_, args: MutationCreateUserArgs, context: Context) => {
       const { name, email, password } = args;
       let userCheck = await User.findOne({ email });
 
@@ -52,8 +53,14 @@ export const userResolvers: Resolvers = {
         email,
         password: hashedPass,
       });
+
       const token = generateToken(user);
       await user.save();
+
+      // Set cookie for new user
+      const expressRes = context.res as unknown as Response;
+      expressRes.header('Authorization', `Bearer ${token}`);
+      expressRes.header('Access-Control-Expose-Headers', 'Authorization');
 
       return {
         _id: user._id.toString(),
@@ -63,7 +70,7 @@ export const userResolvers: Resolvers = {
       };
     },
 
-    login: async (_, args: MutationLoginArgs) => {
+    login: async (_, args: MutationLoginArgs, context: Context) => {
       const { email, password } = args;
       try {
         const user = await User.findOne({ email });
@@ -75,6 +82,11 @@ export const userResolvers: Resolvers = {
 
         if (await bcrypt.compare(password, user.password)) {
           const token = generateToken(userWOpass);
+
+          // Set the token in the response headers
+          const expressRes = context.res as unknown as Response;
+          expressRes.header('Authorization', `Bearer ${token}`);
+          expressRes.header('Access-Control-Expose-Headers', 'Authorization');
 
           return {
             _id: userWOpass._id.toString(),

@@ -88,7 +88,6 @@ export const movieReviewResolvers: Resolvers = {
           } as MovieReviewReturnType;
         })
       );
-      console.log('moviesWithUser', moviesWithUser);
       return moviesWithUser;
     },
 

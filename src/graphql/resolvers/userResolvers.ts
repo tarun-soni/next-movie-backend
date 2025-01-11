@@ -12,8 +12,9 @@ import {
 
 export const userResolvers: Resolvers = {
   Query: {
-    // get current data
-    // auth only
+    // NOTES - using this query in graphql studio to quickly get the current user,
+    // NOTES - this is not used in the frontend
+    // NOTES - params - are - parent, args, context
     getCurrentUser: async (_, __, context: Context) => {
       if (!context || !context.user) {
         throw new AuthenticationError(`NO token`);

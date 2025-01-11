@@ -36,12 +36,17 @@ app.get('/health', (_, res) => {
 
 let server: ApolloServer | null = null;
 
-// Apollo Server setup
+// NOTES - Apollo Server setup
+// the entry point for the server
+
 async function startApolloServer() {
   if (!server) {
     server = new ApolloServer({
       typeDefs: mergeTypeDefs([userTypeDefs, movieReviewTypeDefs]),
       resolvers: mergeResolvers([userResolvers, movieReviewResolvers]),
+      // NOTES - setting up the context for the server
+      // NOTES - using res to set the cookie for the user
+
       context: ({ req, res }) => {
         const auth = req.headers.authorization || '';
         if (!auth) {
@@ -63,7 +68,7 @@ async function startApolloServer() {
     server.applyMiddleware({
       app,
       path: '/graphql',
-      cors: false, // THIS Let Express handle CORS
+      cors: false, // NOTES- THIS Let Express handle CORS
     });
   }
 

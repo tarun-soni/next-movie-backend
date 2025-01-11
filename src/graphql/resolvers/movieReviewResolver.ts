@@ -13,8 +13,9 @@ import { Resolvers } from '../../types/generated';
 
 export const movieReviewResolvers: Resolvers = {
   Query: {
-    // using this query in graphql studio to quickly access all reviews,
-    // this is not used in the frontend
+    // NOTES - using this query in graphql studio to quickly access all reviews,
+    // NOTES - this is not used in the frontend
+    // NOTES - params - are - parent, args, context
     getAllMovieReviews: async (
       _,
       __,
@@ -60,6 +61,8 @@ export const movieReviewResolvers: Resolvers = {
       }
     },
 
+    // NOTES - fetching the reviews for a specific movie
+    // this is used in the frontend to get the reviews for a specific movie using the movieId and the userId
     getMovieReviewByMovieId: async (
       _,
       { movieId },
@@ -91,8 +94,15 @@ export const movieReviewResolvers: Resolvers = {
       return moviesWithUser;
     },
 
-    getGraphqlPopularMovies: async (_, { pageNumber }) => {
+    // NOTES - fetching the popular movies
+    // MOVED from Frontend fetch to Backend GraphQL fetch
+    // this is used in the frontend to get the popular movies
+    //
+    getGraphqlPopularMovies: async (_, { pageNumber }, context: Context) => {
       try {
+        if (!context || !context.user) {
+          throw new AuthenticationError('User not authenticated');
+        }
         const page = pageNumber || 1;
         const apiUrl = getApiUrl(page);
 
@@ -114,6 +124,8 @@ export const movieReviewResolvers: Resolvers = {
   },
 
   Mutation: {
+    // NOTES - creating a movie review
+    // this is used in the frontend to create a movie review
     // parent, args, context
     createMovieReview: async (
       _,
@@ -171,6 +183,10 @@ export const movieReviewResolvers: Resolvers = {
       }
     },
 
+    // NOTES - deleting a movie review
+    // this is used in the frontend to delete a movie review
+    // ADDED the checks to the deleteMovieReview mutation
+    // parent, args, context
     deleteMovieReview: async (
       _,
       { reviewId },

@@ -1,5 +1,6 @@
 import { gql } from 'apollo-server-core';
 
+// NOTES - userTypeDefs is the schema for the user
 export const userTypeDefs = gql`
   "---all querys here---"
   type Query {

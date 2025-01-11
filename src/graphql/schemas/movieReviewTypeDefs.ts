@@ -1,5 +1,6 @@
 import { gql } from 'apollo-server-core';
 
+// NOTES - movieReviewTypeDefs is the schema for the movie review
 export const movieReviewTypeDefs = gql`
   "---all querys here---"
   type Query {

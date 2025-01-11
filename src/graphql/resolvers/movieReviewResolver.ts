@@ -1,65 +1,95 @@
-import bcrypt from 'bcryptjs';
-import generateToken from '../../utils/generateToken';
 import { AuthenticationError } from 'apollo-server-errors';
 import { MovieReview } from '../../models/movieReview';
 import { User } from '../../models/user';
 import { getApiUrl } from '../../config/apiURL';
+import {
+  Context,
+  MovieReviewDocument,
+  UserDocument,
+  MovieReviewReturnType,
+  DeleteReviewReturnType,
+} from '../../types/graphql';
+import { Resolvers } from '../../types/generated';
 
-export const movieReviewResolvers = {
-  MovieReview: {
-    user: async (parent) => {
-      const user = await User.findById(parent.userId).select('-password');
-      return user;
-    },
-  },
-
+export const movieReviewResolvers: Resolvers = {
   Query: {
-    // get current data
-    // auth only
-    getAllMovieReviews: async (_, __, context) => {
+    // todo check user return
+    getAllMovieReviews: async (
+      _,
+      __,
+      context: Context
+    ): Promise<MovieReviewReturnType[]> => {
       if (!context || !context.user) {
         throw new AuthenticationError(`NO token`);
       }
       try {
-        console.log('context', context);
         const {
           user: { _id },
         } = context.user;
 
-        console.log('_id', _id);
-
         const movieReviews = await MovieReview.find({ userId: _id });
-        console.log('movieReviews', movieReviews);
-        return movieReviews;
+        return movieReviews.map((review) => ({
+          _id: review._id.toString(),
+          movieId: review.movieId,
+          rating: review.rating,
+          reviewText: review.reviewText,
+          user: null as any, // Will be populated by the user resolver
+        }));
       } catch (error) {
         throw new Error(`Error getting all movie reviews: ${error.message}`);
       }
     },
 
-    getMovieReviewByMovieId: async (_, { movieId }) => {
-      // Get all reviews for this movie
+    getMovieReviewByMovieId: async (
+      _,
+      { movieId },
+      context: Context
+    ): Promise<MovieReviewReturnType[]> => {
+      // if (!context || !context.user) {
+      //   throw new AuthenticationError(`NO token`);
+      // }
+
+      //   const {
+      //     user: { _id },
+      //   } = context.user;
+
       const movieReviews = await MovieReview.find({ movieId });
 
       if (!movieReviews || movieReviews.length === 0) {
-        console.log('no movie reviews found');
         return [];
       }
 
-      return movieReviews;
+      // const users = await User.find({ _id: { $in: movieReviews.map((review) => review.userId) } });
+
+      console.log('movieReviews', movieReviews);
+
+      // type MovieReview {
+      //   _id: ID
+      //   movieId: String!
+      //   rating: Int!
+      //   reviewText: String
+      //   user: User!
+      // }
+      const moviesWithUser = await Promise.all(
+        movieReviews.map(async (review) => {
+          const user = await User.findById(review.userId);
+          return {
+            _id: review._id.toString(),
+            userId: review.userId,
+            movieId: review.movieId,
+            rating: review.rating,
+            reviewText: review.reviewText,
+            user,
+          };
+        })
+      );
+      console.log('moviesWithUser', moviesWithUser);
+      return moviesWithUser;
     },
 
     getGraphqlPopularMovies: async (_, { pageNumber }) => {
-      console.log('inside getGraphqlPopularMovies');
       try {
-        // Get all reviews for this movie
-        // const { searchParams } = new URL(request.url);
-        // const query = searchParams.get('query');
-        // const page = searchParams.get('page') || '1';
-
-        console.log('pageNumber', pageNumber);
-
         const page = pageNumber || 1;
-
         const apiUrl = getApiUrl(page);
 
         const response = await fetch(apiUrl);
@@ -68,56 +98,81 @@ export const movieReviewResolvers = {
         }
 
         const data = await response.json();
-
-        // return NextResponse.json(data.results);
         return {
-          // results: data.results.map((r) => {
-          //   return {
-          //     id: r.id,
-          //   };
-          // }),
           results: data.results,
           total_pages: data.total_pages,
           total_results: data.total_results,
         };
       } catch (error) {
-        console.log('error', error);
+        throw new Error(`Error fetching popular movies: ${error.message}`);
       }
     },
   },
 
-  // All mutation definations
   Mutation: {
     // parent, args, context
     // TODO: add the context here for userID
-    createMovieReview: async (_, { movieId, rating, reviewText, userId }) => {
-      // Check if this user has already reviewed this movie
+    createMovieReview: async (
+      _,
+      { movieId, rating, reviewText, userId },
+      context: Context
+    ): Promise<MovieReviewReturnType> => {
+      if (!context || !context.user) {
+        throw new AuthenticationError(`NO token`);
+      }
+
+      const {
+        user: { _id },
+      } = context.user;
+      const user = await User.findById(userId).select('-password');
+
+      if (user._id.toString() !== _id.toString()) {
+        throw new Error('You are not LOGGED IN');
+      }
+
       const existingReview = await MovieReview.findOne({ movieId, userId });
 
       if (existingReview) {
         throw new Error('You have already reviewed this movie');
       }
 
-      console.log({ movieId, rating, reviewText, userId });
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      if (!movieId) {
+        throw new Error('Movie ID is required');
+      }
+
+      if (!rating) {
+        throw new Error('Rating is required');
+      }
 
       try {
-        let movieReview = new MovieReview({
+        const movieReview = await MovieReview.create({
           movieId,
           rating,
           reviewText,
           userId,
         });
-        await movieReview.save();
-        return movieReview;
+
+        return {
+          _id: movieReview._id.toString(),
+          movieId: movieReview.movieId,
+          rating: movieReview.rating,
+          reviewText: movieReview.reviewText,
+          user,
+        };
       } catch (error) {
         throw new Error(`Error creating movie review: ${error.message}`);
       }
     },
 
-    // login mutation
-    // TODO: check for user id
-
-    deleteMovieReview: async (_, { reviewId }, context) => {
+    deleteMovieReview: async (
+      _,
+      { reviewId },
+      context: Context
+    ): Promise<DeleteReviewReturnType> => {
       if (!context || !context.user) {
         throw new AuthenticationError('User not authenticated');
       }
@@ -140,7 +195,7 @@ export const movieReviewResolvers = {
         }
 
         await MovieReview.deleteOne({ _id: reviewId });
-        return 'Movie review deleted successfully';
+        return { message: 'Movie review deleted successfully' };
       } catch (error) {
         throw new Error(`Error deleting movie review: ${error.message}`);
       }

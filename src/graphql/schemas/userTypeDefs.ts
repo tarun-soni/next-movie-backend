@@ -12,7 +12,13 @@ export const userTypeDefs = gql`
     _id: ID!
     name: String!
     email: String!
-    token: String!
+    token: String
+  }
+
+  type UserWithoutToken {
+    _id: ID!
+    name: String!
+    email: String!
   }
 
   "---all mutations here---"

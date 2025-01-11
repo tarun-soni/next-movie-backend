@@ -15,7 +15,7 @@ export const movieReviewTypeDefs = gql`
     movieId: String!
     rating: Int!
     reviewText: String
-    user: User!
+    user: UserWithoutToken!
   }
 
   type Movie {

@@ -1,12 +1,7 @@
 import mongoose from 'mongoose';
+import { UserDocument } from '../types/graphql';
 
-interface User {
-  name: string;
-  email: string;
-  password: string;
-}
-
-const userSchema: mongoose.Schema<User> = new mongoose.Schema({
+const userSchema = new mongoose.Schema<UserDocument>({
   name: {
     type: String,
     required: true,
@@ -22,4 +17,4 @@ const userSchema: mongoose.Schema<User> = new mongoose.Schema({
   },
 });
 
-export const User = mongoose.model('User', userSchema);
+export const User = mongoose.model<UserDocument>('User', userSchema);

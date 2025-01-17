@@ -76,8 +76,11 @@ export const movieReviewResolvers: Resolvers = {
 
       const cachedData = await redisClient.get(redisKey);
 
-      if (cachedData) {
-        return JSON.parse(cachedData);
+      const cachedDataArray = JSON.parse(cachedData);
+
+      if (cachedDataArray && cachedDataArray.length === movieReviews.length) {
+        console.log('returning cached data');
+        return cachedDataArray;
       }
 
       if (!movieReviews || movieReviews.length === 0) {

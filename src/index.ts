@@ -9,8 +9,12 @@ import { userResolvers } from './graphql/resolvers/userResolvers';
 import { userTypeDefs } from './graphql/schemas/userTypeDefs';
 import { movieReviewResolvers } from './graphql/resolvers/movieReviewResolver';
 import { movieReviewTypeDefs } from './graphql/schemas/movieReviewTypeDefs';
+import Redis from 'ioredis';
 
 dotenv.config();
+
+const redisUrl = process.env.REDIS_URL;
+const redisPassword = process.env.REDIS_PASSWORD;
 
 const app: Express = express();
 
@@ -90,11 +94,25 @@ async function startApolloServer() {
 
   return app;
 }
+let redis: Redis | null = null;
 
-// Handle any top-level errors
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled Rejection:', error);
-});
+if (process.env.NODE_ENV === 'production') {
+  console.log('USING REMOTE REDIS');
+
+  redis = new Redis(redisUrl, {
+    password: redisPassword,
+  });
+} else {
+  console.log('USING LOCAL REDIS');
+  redis = new Redis();
+}
+
+redis.on('error', (err) => console.log('Redis Client Error', err));
+redis // Handle any top-level errors
+
+  .on('unhandledRejection', (error) => {
+    console.error('Unhandled Rejection:', error);
+  });
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
@@ -112,3 +130,5 @@ export default async function handler(req, res) {
   const app = await startApolloServer();
   return app(req, res);
 }
+
+export const redisClient = redis;

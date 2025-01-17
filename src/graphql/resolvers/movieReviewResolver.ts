@@ -10,6 +10,8 @@ import {
   DeleteReviewReturnType,
 } from '../../types/graphql';
 import { Resolvers } from '../../types/generated';
+import { redisClient } from '../../';
+import { REDIS_CACHE_TIME } from '../../config/constants';
 
 export const movieReviewResolvers: Resolvers = {
   Query: {
@@ -70,6 +72,14 @@ export const movieReviewResolvers: Resolvers = {
     ): Promise<MovieReviewReturnType[]> => {
       const movieReviews = await MovieReview.find({ movieId });
 
+      const redisKey = `movie-reviews:${movieId}`;
+
+      const cachedData = await redisClient.get(redisKey);
+
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+
       if (!movieReviews || movieReviews.length === 0) {
         return [];
       }
@@ -91,6 +101,14 @@ export const movieReviewResolvers: Resolvers = {
           } as MovieReviewReturnType;
         })
       );
+
+      await redisClient.set(
+        redisKey,
+        JSON.stringify(moviesWithUser),
+        'EX',
+        REDIS_CACHE_TIME
+      );
+
       return moviesWithUser;
     },
 
@@ -100,11 +118,18 @@ export const movieReviewResolvers: Resolvers = {
     //
     getGraphqlPopularMovies: async (_, { pageNumber }, context: Context) => {
       try {
+        const redisKey = `all-movie:${pageNumber}`;
         if (!context || !context.user) {
           throw new AuthenticationError('User not authenticated');
         }
         const page = pageNumber || 1;
         const apiUrl = getApiUrl(page);
+
+        const cachedData = await redisClient.get(redisKey);
+
+        if (cachedData) {
+          return JSON.parse(cachedData);
+        }
 
         const response = await fetch(apiUrl);
         if (!response.ok) {
@@ -112,11 +137,21 @@ export const movieReviewResolvers: Resolvers = {
         }
 
         const data = await response.json();
-        return {
+
+        const dataToReturn = {
           results: data.results,
           total_pages: data.total_pages,
           total_results: data.total_results,
         };
+
+        await redisClient.set(
+          redisKey,
+          JSON.stringify(dataToReturn),
+          'EX',
+          REDIS_CACHE_TIME
+        );
+
+        return dataToReturn;
       } catch (error) {
         throw new Error(`Error fetching popular movies: ${error.message}`);
       }
